@@ -1,0 +1,98 @@
+# calibration.py
+import tkinter as tk
+from tkinter import messagebox
+from PIL import Image, ImageTk
+import cv2
+import math
+
+
+def get_dynamic_scale(file_path):
+    """
+    Opens a centered Tkinter window for manual calibration.
+    The operator clicks two points of a known 50mm distance.
+    Returns pixels_per_mm.
+    """
+    root = tk.Toplevel()
+    root.title("System Calibration (Fixed 50mm Reference)")
+    root.grab_set()
+
+    # --- Configuration ---
+    REFERENCE_DISTANCE_MM = 50.0  # Hard-coded reference value
+    state = {
+        'points': [],
+        'line_id': None,
+        'pixels_per_mm': None
+    }
+
+    # --- UI Instructions ---
+    header = tk.Frame(root, bg="#f0f0f0")
+    header.pack(fill=tk.X)
+
+    tk.Label(
+        header,
+        text=f"CALIBRATION MODE: Click two points exactly {REFERENCE_DISTANCE_MM}mm apart.",
+        font=('Arial', 11, 'bold'), fg="#d32f2f", bg="#f0f0f0", pady=10
+    ).pack()
+
+    # --- Image Loading & Scaling for Display ---
+    img_bgr = cv2.imread(file_path)
+    if img_bgr is None:
+        messagebox.showerror("Error", "Could not load image for calibration.")
+        root.destroy()
+        return None
+
+    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+    pil_img = Image.fromarray(img_rgb)
+
+    # Scale image to fit the screen (max 1000x700 for laptops like Nitro V15)
+    max_w, max_h = 1000, 700
+    pil_img.thumbnail((max_w, max_h))
+
+    # Calculate scale factor between original image and displayed thumbnail
+    orig_w = img_bgr.shape[1]
+    render_w = pil_img.width
+    scale_factor = orig_w / render_w
+
+    photo = ImageTk.PhotoImage(pil_img)
+
+    # --- Canvas Setup ---
+    canvas = tk.Canvas(root, width=pil_img.width, height=pil_img.height, cursor="cross", bd=0, highlightthickness=0)
+    canvas.create_image(0, 0, anchor=tk.NW, image=photo)
+    canvas.pack()
+
+    def on_click(event):
+        # Record coordinates of the click
+        state['points'].append((event.x, event.y))
+
+        # Visual feedback: small red dot
+        canvas.create_oval(event.x - 3, event.y - 3, event.x + 3, event.y + 3, fill="red", outline="white", width=1)
+
+        if len(state['points']) == 2:
+            p1, p2 = state['points']
+            # Visual feedback: connecting red line
+            state['line_id'] = canvas.create_line(p1[0], p1[1], p2[0], p2[1], fill="#ff0000", width=2)
+
+            # Calculate Euclidean distance in pixels (on screen)
+            px_dist_screen = math.sqrt((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2)
+
+            # Convert screen pixels back to original image pixels
+            actual_px_dist = px_dist_screen * scale_factor
+
+            # Calculate the final scale (Pixels per mm)
+            state['pixels_per_mm'] = actual_px_dist / REFERENCE_DISTANCE_MM
+
+            # Brief delay so the user can see the line before closing
+            root.after(400, root.destroy)
+
+    canvas.bind("<Button-1>", on_click)
+
+    # --- Window Centering Logic ---
+    root.update_idletasks()
+    win_w = root.winfo_width()
+    win_h = root.winfo_height()
+    screen_x = (root.winfo_screenwidth() // 2) - (win_w // 2)
+    screen_y = (root.winfo_screenheight() // 2) - (win_h // 2)
+    root.geometry(f'+{screen_x}+{screen_y}')
+
+    root.wait_window()
+    return state['pixels_per_mm']

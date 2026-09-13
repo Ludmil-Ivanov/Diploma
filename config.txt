@@ -1,0 +1,25 @@
+# config.py
+import os
+
+# --- Calibration ---
+CIRCULARITY_THRESHOLD = 0.85
+
+# --- Directories ---
+DRILLS_DIR = "Drills"
+MILLS_DIR = "Mills"
+OUTPUT_DIR = "Output_nc"
+
+# --- CNC Parameters (HAAS VF2-YT) ---
+SAFE_Z = 10.0
+PLUNGE_Z = -2.0
+DRILL_Z = -5.0
+
+FEED_PLUNGE = 150.0
+FEED_MILL = 500.0
+RPM_DRILL = 1500
+RPM_MILL = 2500
+
+# Ensure directories exist
+for directory in [DRILLS_DIR, MILLS_DIR, OUTPUT_DIR]:
+    if not os.path.exists(directory):
+        os.makedirs(directory)
