@@ -63,7 +63,7 @@ def plan_operations(features, drills):
 
     # Step 3: Final report
     if error_log:
-        full_error_msg = "🚨 CRITICAL MANUFACTURING ERRORS FOUND:\n\n"
+        full_error_msg = "CRITICAL MANUFACTURING ERRORS FOUND:\n\n"
         full_error_msg += "\n".join(error_log)
         full_error_msg += "\n\nACTION: Update tool library or dimensions."
         return None, False, full_error_msg
